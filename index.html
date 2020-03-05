@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.2/dist/tf.min.js"></script>
+  <script src="https://unpkg.com/@microsoft/customvision-tfjs"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoML_Anime</title>
+  <style>
+    #render {
+      position: relative;
+    }
+
+    #image,
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="render">
+    <img id="image" src="./test/seiya.jpg" height="400">
+    <!-- <img id="image" src="./test/goku.jpg" height="400"> -->
+    <!-- <img id="image" src="./test/pikachu.png" height="400"> -->
+
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    let model;
+    let labels = ["Goku", "Seiya"]
+
+    async function init() {
+      renderProcessing();
+      model = new cvstfjs.ObjectDetectionModel();
+      await model.loadModelAsync('./tf_model/model.json');
+      // model.INPUT_SIZE=320;
+      console.log("Model loaded", model);
+      const image = document.getElementById('image');
+      const result = await model.executeAsync(image);
+
+      console.log("Result: ", result);
+      renderResults(result);
+    }
+    init();
+
+    function renderResults(result) {
+      // Get max probability and its index
+      let maxProbabilityIndex = 0;
+      let maxProbability = 0;
+      for (let i = 0; i < result[1].length; i++) {
+        if (maxProbability < result[1][i]) {
+          maxProbability = result[1][i];
+          maxProbabilityIndex = i;
+        }
+      }
+
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const image = document.getElementById('image');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      ctx.textBaseline = "top";
+      // Clean canvas
+      // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      if (maxProbability > 0.2) {
+        let x = result[0][maxProbabilityIndex][0] * image.width;
+        let y = result[0][maxProbabilityIndex][1] * image.height;
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+
+        const width = (result[0][maxProbabilityIndex][2] * image.width) - x;
+        const height = (result[0][maxProbabilityIndex][3] * image.height) - y;
+
+        // Draw the bounding box.
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, width, height);
+
+        let label = labels[result[2][maxProbabilityIndex]] + " (" + Math.floor(maxProbability * 100) + "%)";
+        // Draw the label background.
+        ctx.fillStyle = "red";
+        const textWidth = ctx.measureText(label).width;
+        const textHeight = parseInt("16px sans-serif", 10); // base 10
+        ctx.fillRect(x, y, textWidth + 4, textHeight + 4);
+
+        // Draw the text
+        ctx.fillStyle = "#FFF";
+        ctx.fillText(label, x + ctx.lineWidth, y + ctx.lineWidth);
+      } else {
+        let label = "Nothing found!";
+        // Draw the label background.
+        ctx.fillStyle = "red";
+        const textWidth = ctx.measureText(label).width;
+        const textHeight = parseInt("16px sans-serif", 10); // base 10
+        ctx.fillRect(0, 0, textWidth + 4, textHeight + 4);
+
+        // Draw the text
+        ctx.fillStyle = "#FFF";
+        ctx.fillText(label, 2, 2);
+      }
+    }
+
+    function renderProcessing() {
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const image = document.getElementById('image');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      ctx.textBaseline = "top";
+      let label = "Processing...";
+      // Draw the label background.
+      ctx.fillStyle = "red";
+      const textWidth = ctx.measureText(label).width;
+      const textHeight = parseInt("16px sans-serif", 10); // base 10
+      ctx.fillRect(0, 0, textWidth + 4, textHeight + 4);
+
+      // Draw the text
+      ctx.fillStyle = "#FFF";
+      ctx.fillText(label, 2, 2);
+
+
+    }
+  </script>
+</body>
+
+</html>
